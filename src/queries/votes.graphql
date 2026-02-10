@@ -1,0 +1,20 @@
+query GetVotes($first: Int!, $skip: Int!, $proposal: String!) {
+  votes (
+    first: $first,
+    skip: $skip,
+    where: {
+      proposal: $proposal
+    },
+    orderBy: "created",
+    orderDirection: asc
+  ) {
+    id
+    voter
+    created
+    choice
+    vp
+    proposal {
+      id
+    }
+  }
+}

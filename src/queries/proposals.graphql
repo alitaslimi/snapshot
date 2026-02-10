@@ -1,0 +1,20 @@
+query GetProposals($first: Int!, $skip: Int!) {
+  proposals(
+    first: $first,
+    skip: $skip,
+    where: {
+      space: "%SPACE%"
+    },
+    orderBy: "created",
+    orderDirection: asc
+  ) {
+    id
+    title
+    created
+    start
+    end
+    state
+    choices
+    scores_total
+  }
+}

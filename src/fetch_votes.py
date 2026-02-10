@@ -59,29 +59,20 @@ class RateLimiter:
 # Global rate limiter instance
 rate_limiter = RateLimiter()
 
-# GraphQL query to fetch votes for a specific proposal
-VOTES_QUERY = """
-query GetVotes($first: Int!, $skip: Int!, $proposal: String!) {
-  votes (
-    first: $first,
-    skip: $skip,
-    where: {
-      proposal: $proposal
-    },
-    orderBy: "created",
-    orderDirection: asc
-  ) {
-    id
-    voter
-    created
-    choice
-    vp
-    proposal {
-      id
-    }
-  }
-}
-"""
+# Paths
+DATA_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "data"))
+PROPOSALS_CSV = os.path.join(DATA_DIR, "proposals.csv")
+VOTES_CSV = os.path.join(DATA_DIR, "votes.csv")
+
+
+def load_query_file(name: str) -> str:
+        path = os.path.join(os.path.dirname(__file__), "queries", name)
+        with open(path, "r", encoding="utf-8") as fh:
+                return fh.read()
+
+
+# GraphQL query to fetch votes for a specific proposal (loaded from file)
+VOTES_QUERY = load_query_file("votes.graphql")
 
 
 def make_api_request(query: str, variables: Dict[str, Any], retry_count: int = 0) -> requests.Response:
@@ -145,12 +136,12 @@ def get_already_fetched_proposals() -> Set[str]:
     Read votes.csv and return the set of proposal_ids that have already been fetched.
     Returns an empty set if the file doesn't exist.
     """
-    if not os.path.exists("votes.csv"):
+    if not os.path.exists(VOTES_CSV):
         return set()
     
     fetched_proposals = set()
     try:
-        with open("votes.csv", "r", encoding="utf-8") as csvfile:
+        with open(VOTES_CSV, "r", encoding="utf-8") as csvfile:
             reader = csv.DictReader(csvfile)
             for row in reader:
                 proposal_id = row.get("proposal_id", "").strip()
@@ -168,11 +159,11 @@ def read_proposals() -> List[Dict[str, Any]]:
     """
     proposals = []
     
-    if not os.path.exists("proposals.csv"):
-        raise FileNotFoundError("proposals.csv not found. Please run fetch_proposals.py first.")
+    if not os.path.exists(PROPOSALS_CSV):
+        raise FileNotFoundError(f"{PROPOSALS_CSV} not found. Please run fetch_proposals.py first.")
     
     try:
-        with open("proposals.csv", "r", encoding="utf-8") as csvfile:
+        with open(PROPOSALS_CSV, "r", encoding="utf-8") as csvfile:
             reader = csv.DictReader(csvfile)
             for row in reader:
                 proposal_id = row.get("proposal_id", "").strip()
@@ -258,7 +249,7 @@ def process_votes(votes: List[Dict[str, Any]], proposal_id: str) -> List[Dict[st
     return processed
 
 
-def append_to_csv(votes: List[Dict[str, Any]], filename: str = "votes.csv"):
+def append_to_csv(votes: List[Dict[str, Any]], filename: str = VOTES_CSV):
     """
     Append votes to CSV file. Creates the file if it doesn't exist.
     """
@@ -274,6 +265,7 @@ def append_to_csv(votes: List[Dict[str, Any]], filename: str = "votes.csv"):
         "voting_power"
     ]
     
+    os.makedirs(os.path.dirname(filename), exist_ok=True)
     file_exists = os.path.exists(filename)
     
     try:

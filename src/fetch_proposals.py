@@ -1,21 +1,20 @@
+# Libraries
 import requests
 import csv
 import time
 from datetime import datetime
 from typing import List, Dict, Any
 from collections import deque
+import os
 
-# Snapshot GraphQL API endpoint
+# Variables
 API_URL = "https://hub.snapshot.org/graphql"
-
-# Space filter for Arbitrum DAO
 SPACE_ID = "arbitrumfoundation.eth"
 
-# API Rate Limits
 MAX_REQUESTS_PER_MINUTE = 60
-REQUEST_TIMEOUT = 30  # seconds
+REQUEST_TIMEOUT = 30 # seconds
 MAX_RETRIES = 3
-RETRY_DELAY_BASE = 2  # seconds
+RETRY_DELAY_BASE = 1 # seconds
 
 
 class RateLimiter:
@@ -58,29 +57,19 @@ class RateLimiter:
 # Global rate limiter instance
 rate_limiter = RateLimiter()
 
-# GraphQL query to fetch proposals
-PROPOSALS_QUERY = """
-query GetProposals($first: Int!, $skip: Int!) {
-  proposals(
-    first: $first,
-    skip: $skip,
-    where: {
-      space: "%s"
-    },
-    orderBy: "created",
-    orderDirection: asc
-  ) {
-    id
-    title
-    created
-    start
-    end
-    state
-    choices
-    scores_total
-  }
-}
-""" % SPACE_ID
+# Paths
+DATA_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "data"))
+PROPOSALS_CSV = os.path.join(DATA_DIR, "proposals.csv")
+
+
+def load_query_file(name: str) -> str:
+        path = os.path.join(os.path.dirname(__file__), "queries", name)
+        with open(path, "r", encoding="utf-8") as fh:
+                return fh.read()
+
+
+# GraphQL query to fetch proposals (loaded from file)
+PROPOSALS_QUERY = load_query_file("proposals.graphql").replace("%SPACE%", SPACE_ID)
 
 
 def make_api_request(query: str, variables: Dict[str, Any], retry_count: int = 0) -> requests.Response:
@@ -234,7 +223,7 @@ def process_proposals(proposals: List[Dict[str, Any]], vote_counts: Dict[str, in
     return processed
 
 
-def save_to_csv(proposals: List[Dict[str, Any]], filename: str = "proposals.csv"):
+def save_to_csv(proposals: List[Dict[str, Any]], filename: str = PROPOSALS_CSV):
     """
     Save processed proposals to CSV file.
     """
@@ -256,6 +245,7 @@ def save_to_csv(proposals: List[Dict[str, Any]], filename: str = "proposals.csv"
         "choices"
     ]
     
+    os.makedirs(os.path.dirname(filename), exist_ok=True)
     with open(filename, "w", newline="", encoding="utf-8") as csvfile:
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         writer.writeheader()
@@ -289,7 +279,7 @@ def main():
         
         # Save to CSV
         print("Saving to CSV...")
-        save_to_csv(processed_proposals, "proposals.csv")
+        save_to_csv(processed_proposals)
         
         print("Done!")
         

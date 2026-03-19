@@ -1,20 +1,25 @@
-query GetProposals($first: Int!, $skip: Int!) {
+query GetProposals($first: Int!, $skip: Int!, $spaces: [String!]!) {
   proposals(
     first: $first,
     skip: $skip,
     where: {
-      space: "%SPACE%"
+      space_in: $spaces
     },
     orderBy: "created",
     orderDirection: asc
   ) {
     id
     title
-    created
+    choices
     start
     end
+    snapshot
     state
-    choices
-    scores_total
+    author
+    created
+    space {
+      id
+      name
+    }
   }
 }
